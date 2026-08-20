@@ -1,4 +1,4 @@
-const CACHE_NAME = "kalamu-books-v1";
+const CACHE_NAME = "kalamu-books-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -33,6 +33,21 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Network-first for the app page itself, so updates are picked up on next launch.
+  if (event.request.mode === "navigate" || event.request.url.endsWith("index.html")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (fonts, icons, libraries).
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
